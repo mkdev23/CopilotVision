@@ -8,6 +8,7 @@ import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.util.Log
+import android.util.Size
 import androidx.camera.core.CameraSelector
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.cvp.BurstCaptureController
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.cvp.FrameMeta
@@ -51,6 +52,7 @@ class PhoneCameraManager(private val context: Context) {
                 cameraProvider = cameraProviderFuture.get()
 
                 val imageAnalysis = ImageAnalysis.Builder()
+                    .setTargetResolution(Size(1920, 1080))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
@@ -65,7 +67,7 @@ class PhoneCameraManager(private val context: Context) {
                             pipeline != null &&
                             burst?.shouldPassFrame() == true
                         ) {
-                            val jpegBytes = bitmap.toJpegBytes(quality = 50)
+                            val jpegBytes = bitmap.toJpegBytes(quality = 92)
                             val meta = FrameMeta(
                                 timestampMs = System.currentTimeMillis(),
                                 mode = SettingsManager.cvpCaptureMode,

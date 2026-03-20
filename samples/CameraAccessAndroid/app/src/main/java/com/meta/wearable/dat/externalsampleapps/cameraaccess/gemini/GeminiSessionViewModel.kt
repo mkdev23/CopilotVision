@@ -73,8 +73,10 @@ class GeminiSessionViewModel : ViewModel() {
 
         // Wire audio callbacks — AudioManager is unchanged (same PCM16 format)
         audioManager.onAudioCaptured = lambda@{ data ->
-            // Phone mode: mute mic while model speaks to prevent echo
-            if (streamingMode == StreamingMode.PHONE && azureService.isModelSpeaking.value) return@lambda
+            // Suppress mic while model is speaking or within the 600 ms post-speaking
+            // drain window so the AudioTrack buffer empties before VAD can re-trigger.
+            // Applied in phone mode (echo from speaker) and glasses mode (safety margin).
+            if (azureService.isMicSuppressed) return@lambda
             azureService.sendAudio(data)
         }
 

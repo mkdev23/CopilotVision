@@ -1,5 +1,6 @@
 package com.meta.wearable.dat.externalsampleapps.cameraaccess.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,12 +87,7 @@ fun GeminiOverlay(
             Spacer(modifier = Modifier.height(4.dp))
             ToolCallStatusView(status = toolStatus)
         }
-
-        // Speaking indicator
-        if (uiState.isModelSpeaking) {
-            Spacer(modifier = Modifier.height(4.dp))
-            SpeakingIndicator()
-        }
+        // SpeakingIndicator removed — HAL waveform shown centered in StreamScreen
     }
 }
 
@@ -237,35 +234,86 @@ fun ToolCallStatusView(
     }
 }
 
+/**
+ * HAL 9000-inspired centered waveform — displayed full-width in the middle of the screen
+ * while the AI is speaking. Pulsing radial glow + symmetric waveform bars.
+ * Shown directly in StreamScreen, not inside GeminiOverlay.
+ */
 @Composable
-fun SpeakingIndicator(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "speaking")
-    Row(
-        modifier = modifier
-            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+fun SpeakingWaveform(modifier: Modifier = Modifier) {
+    val lightBlue = Color(0xFF4FC3F7)
+    val infiniteTransition = rememberInfiniteTransition(label = "hal")
+    val barCount = 38
+
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.10f,
+        targetValue = 0.28f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulse",
+    )
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
     ) {
-        repeat(4) { index ->
-            val height by infiniteTransition.animateFloat(
-                initialValue = 4f,
-                targetValue = 16f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(400, delayMillis = index * 100, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
+        // Radial glow rings
+        Box(
+            modifier = Modifier
+                .size(320.dp)
+                .background(
+                    Brush.radialGradient(
+                        0.0f to lightBlue.copy(alpha = pulse * 0.6f),
+                        0.45f to lightBlue.copy(alpha = pulse * 0.2f),
+                        1.0f to Color.Transparent,
+                    ),
+                    shape = CircleShape,
                 ),
-                label = "bar$index",
-            )
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(height.dp)
-                    .clip(RoundedCornerShape(1.5.dp))
-                    .background(Color.White),
-            )
+        )
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .background(
+                    Brush.radialGradient(
+                        0.0f to lightBlue.copy(alpha = pulse * 1.2f),
+                        0.7f to lightBlue.copy(alpha = pulse * 0.3f),
+                        1.0f to Color.Transparent,
+                    ),
+                    shape = CircleShape,
+                ),
+        )
+
+        // Waveform bars — symmetric, tallest in the centre
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            repeat(barCount) { index ->
+                val dist = kotlin.math.abs(index - barCount / 2f) / (barCount / 2f)
+                val maxH = (110f * (1f - dist * 0.72f)).coerceAtLeast(8f)
+                val dur = 260 + (index % 7) * 65
+                val h by infiniteTransition.animateFloat(
+                    initialValue = 4f,
+                    targetValue = maxH,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(dur, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
+                    label = "bar$index",
+                )
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(h.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(lightBlue.copy(alpha = 0.35f + (1f - dist) * 0.65f)),
+                )
+            }
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(text = "Speaking", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
     }
 }

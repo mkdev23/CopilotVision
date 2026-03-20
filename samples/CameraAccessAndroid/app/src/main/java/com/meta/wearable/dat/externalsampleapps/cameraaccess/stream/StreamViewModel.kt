@@ -286,7 +286,7 @@ class StreamViewModel(
     val image = YuvImage(nv21, ImageFormat.NV21, videoFrame.width, videoFrame.height, null)
     val out =
         ByteArrayOutputStream().use { stream ->
-          image.compressToJpeg(Rect(0, 0, videoFrame.width, videoFrame.height), 50, stream)
+          image.compressToJpeg(Rect(0, 0, videoFrame.width, videoFrame.height), 92, stream)
           stream.toByteArray()
         }
 
@@ -303,7 +303,7 @@ class StreamViewModel(
       // compareAndSet: only the first frame wins; rest are skipped until next triggerLook()
       if (!visionFrameConsumed.compareAndSet(false, true)) return
       burstController.stopImmediate()  // we have our frame, no need to keep the window open
-      val jpegBytes = bitmap.toJpegBytes(quality = 85)
+      val jpegBytes = bitmap.toJpegBytes(quality = 92)
       val meta = FrameMeta(
         timestampMs = System.currentTimeMillis(),
         mode = SettingsManager.cvpCaptureMode,

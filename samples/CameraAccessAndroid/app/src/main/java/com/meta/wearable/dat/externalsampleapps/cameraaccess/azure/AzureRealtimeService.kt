@@ -87,6 +87,18 @@ class AzureRealtimeService {
     private var lastUserSpeechEnd: Long = 0
     private var responseLatencyLogged = false
 
+    // Post-speaking drain window: mic stays suppressed for 600 ms after the last
+    // audio chunk is received so the AudioTrack buffer can fully drain before the
+    // mic is reopened (prevents echo-triggered VAD → unprompted responses).
+    @Volatile private var speakingDrainUntilMs: Long = 0
+
+    /**
+     * True while the model is speaking OR within the 600 ms post-speaking drain window.
+     * Use this instead of [isModelSpeaking] for mic suppression decisions.
+     */
+    val isMicSuppressed: Boolean
+        get() = _isModelSpeaking.value || System.currentTimeMillis() < speakingDrainUntilMs
+
     // Vision timing: track when last model turn completed so we can re-trigger if
     // vision context arrives after the model already responded
     private var lastResponseDoneAt: Long = 0
@@ -226,14 +238,6 @@ class AzureRealtimeService {
             if (signal.uiHint != null) append("\nActive app: ${signal.uiHint}")
         }
 
-        // Re-trigger if model already responded in the last 6 s (timing race: user
-        // spoke before vision context arrived, model said "I can't see yet").
-        // Don't retrigger if a response is already in-flight (responsePending).
-        val shouldRetrigger = !_isModelSpeaking.value &&
-            !responsePending &&
-            lastResponseDoneAt > 0 &&
-            (System.currentTimeMillis() - lastResponseDoneAt) < 6_000L
-
         sendExecutor.execute {
             val json = JSONObject().apply {
                 put("type", "conversation.item.create")
@@ -247,6 +251,13 @@ class AzureRealtimeService {
                 })
             }
             webSocket?.send(json.toString())
+
+            // Re-trigger only when evaluated inside the executor so responsePending
+            // is read with the same serialised ordering as all other writes.
+            val shouldRetrigger = !_isModelSpeaking.value &&
+                !responsePending &&
+                lastResponseDoneAt > 0 &&
+                (System.currentTimeMillis() - lastResponseDoneAt) < 6_000L
             Log.d(TAG, "Injected VisionSignal: retrigger=$shouldRetrigger ocr=${signal.ocrText?.length}chars objects=${signal.objects.size}")
 
             if (shouldRetrigger) {
@@ -321,9 +332,14 @@ class AzureRealtimeService {
                     webSocket?.send(msg.toString())
                 }
 
-                // Ask model to continue after receiving tool output
-                responsePending = true
-                webSocket?.send(JSONObject().put("type", "response.create").toString())
+                // Ask model to continue after receiving tool output.
+                // Guard: if responsePending is already true (VAD auto-triggered a new response
+                // while Foundry was executing the tool call), skip response.create — sending it
+                // would cause "conversation already has an active response" and disconnect.
+                if (!responsePending) {
+                    responsePending = true
+                    webSocket?.send(JSONObject().put("type", "response.create").toString())
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "sendToolResponse error: ${e.message}")
@@ -334,6 +350,12 @@ class AzureRealtimeService {
     fun sendTextMessage(text: String) {
         if (_connectionState.value != AzureConnectionState.Ready) return
         sendExecutor.execute {
+            // Don't stack a response.create on top of one that's already in flight —
+            // the server will reject it and close the connection.
+            if (responsePending || _isModelSpeaking.value) {
+                Log.d(TAG, "sendTextMessage: skipped — response already pending/speaking")
+                return@execute
+            }
             val json = JSONObject().apply {
                 put("type", "conversation.item.create")
                 put("item", JSONObject().apply {
@@ -346,8 +368,6 @@ class AzureRealtimeService {
                 })
             }
             webSocket?.send(json.toString())
-
-            // Trigger response immediately for text messages
             responsePending = true
             webSocket?.send(JSONObject().put("type", "response.create").toString())
         }
@@ -388,7 +408,7 @@ class AzureRealtimeService {
             put("type", "session.update")
             put("session", JSONObject().apply {
                 put("instructions", SettingsManager.geminiSystemPrompt)
-                put("voice", "alloy")
+                put("voice", "shimmer")
                 put("input_audio_format", "pcm16")
                 put("output_audio_format", "pcm16")
                 put("input_audio_transcription", JSONObject().apply {
@@ -421,7 +441,23 @@ class AzureRealtimeService {
 
                 "error" -> {
                     val err = json.optJSONObject("error")
-                    val msg = err?.optString("message") ?: "Unknown error"
+                    val code = err?.optString("code") ?: ""
+                    val msg  = err?.optString("message") ?: "Unknown error"
+                    // These are benign protocol races — the session stays valid:
+                    //  • "no active response found"  — response.cancel arrived after response.done
+                    //  • "active_response_exists"    — duplicate response.create; our guard handles this
+                    //    but a race can still slip through, no need to disconnect
+                    if (code == "response_not_found" ||
+                        code == "active_response_exists" ||
+                        msg.contains("no active response", ignoreCase = true) ||
+                        msg.contains("active response", ignoreCase = true)
+                    ) {
+                        Log.w(TAG, "Ignoring benign race error [$code]: $msg")
+                        // Reset flags so next turn starts clean
+                        _isModelSpeaking.value = false
+                        responsePending = false
+                        return
+                    }
                     Log.e(TAG, "Server error: $msg")
                     _connectionState.value = AzureConnectionState.Error(msg)
                     resolveConnect(false)
@@ -469,6 +505,9 @@ class AzureRealtimeService {
                 }
 
                 "response.audio.done" -> {
+                    // Start drain window BEFORE clearing isModelSpeaking so the mic
+                    // stays suppressed until the AudioTrack buffer empties (~1000 ms).
+                    speakingDrainUntilMs = System.currentTimeMillis() + 1000L
                     _isModelSpeaking.value = false
                 }
 

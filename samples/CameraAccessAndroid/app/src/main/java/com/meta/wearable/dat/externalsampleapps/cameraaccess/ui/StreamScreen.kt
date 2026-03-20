@@ -12,13 +12,21 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -121,15 +129,25 @@ fun StreamScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Video feed
+    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+        // Camera PiP — top-right corner
         streamUiState.videoFrame?.let { videoFrame ->
-            Image(
-                bitmap = videoFrame.asImageBitmap(),
-                contentDescription = stringResource(R.string.live_stream),
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, end = 16.dp)
+                    .size(width = 144.dp, height = 108.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            ) {
+                Image(
+                    bitmap = videoFrame.asImageBitmap(),
+                    contentDescription = stringResource(R.string.live_stream),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
 
         if (streamUiState.streamSessionState == StreamSessionState.STARTING) {
@@ -138,27 +156,41 @@ fun StreamScreen(
             )
         }
 
-        // Overlays + controls
-        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            // Top overlays (below status bar)
-            Column(modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 8.dp)) {
-                // Gemini overlay
-                if (geminiUiState.isGeminiActive) {
-                    GeminiOverlay(
-                        uiState = geminiUiState,
-                        isVisionCapturing = burstState == BurstState.ACTIVE && isPipelineReady,
-                        visionNotConfigured = SettingsManager.workModeEnabled && !isPipelineReady,
-                    )
-                }
+        // HAL waveform — centered, full-width, only while AI is speaking
+        if (geminiUiState.isModelSpeaking) {
+            SpeakingWaveform(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(),
+            )
+        }
 
-                // WebRTC overlay
-                if (webrtcUiState.isActive) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    WebRTCOverlay(uiState = webrtcUiState)
-                }
+        // Overlays + controls stacked at bottom
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // AI session overlay
+            if (geminiUiState.isGeminiActive) {
+                GeminiOverlay(
+                    uiState = geminiUiState,
+                    isVisionCapturing = burstState == BurstState.ACTIVE && isPipelineReady,
+                    visionNotConfigured = SettingsManager.workModeEnabled && !isPipelineReady,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Controls at bottom
+            // WebRTC overlay
+            if (webrtcUiState.isActive) {
+                WebRTCOverlay(uiState = webrtcUiState)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Controls
             ControlsRow(
                 onStopStream = {
                     if (geminiUiState.isGeminiActive) geminiViewModel.stopSession()
@@ -186,7 +218,6 @@ fun StreamScreen(
                 onLook = if (SettingsManager.workModeEnabled) {
                     { streamViewModel.triggerLook() }
                 } else null,
-                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }

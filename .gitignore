@@ -1,0 +1,14 @@
+.DS_Store
+
+# Android
+samples/CameraAccessAndroid/app/src/main/java/**/Secrets.kt
+samples/CameraAccessAndroid/local.properties
+samples/CameraAccessAndroid/.gradle/
+samples/CameraAccessAndroid/build/
+samples/CameraAccessAndroid/app/build/
+
+# Secrets / local config — never commit real values
+.env.deploy
+agent_service/.env
+agent_service/.agent_id
+.claude/

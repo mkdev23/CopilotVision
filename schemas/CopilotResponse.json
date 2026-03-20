@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CopilotResponse",
+  "title": "CopilotResponse",
+  "description": "Foundry Agent → CVP Gateway → Android: final spoken + action response.",
+  "type": "object",
+  "required": ["session_id", "summary"],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short spoken summary for text-to-speech (max 50 words)"
+    },
+    "actions": {
+      "type": "array",
+      "description": "Action items extracted from the scene",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["task", "note", "message", "reminder"] },
+          "title": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "completed", "failed"] }
+        }
+      }
+    },
+    "draft": {
+      "type": ["string", "null"],
+      "description": "Drafted message or note content (if applicable)"
+    },
+    "tool_results": {
+      "type": "array",
+      "description": "MCP tool call results",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool": { "type": "string" },
+          "result": { "type": "object" },
+          "storage": { "type": "string", "enum": ["onenote", "todo", "teams", "sqlite"] }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "description": "Policy limitations applied (e.g. 'No media retained', 'CUI mode: tools disabled')",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "StructuredContext",
+  "title": "StructuredContext",
+  "description": "CVP Gateway → Foundry Agent: structured, media-free context payload.",
+  "type": "object",
+  "required": ["session_id", "mode", "context", "policy"],
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["PRIVATE", "EXEC", "BUILDER", "CUI_STREAM_ONLY"]
+    },
+    "context": {
+      "type": "object",
+      "description": "Structured text context — no raw media",
+      "properties": {
+        "ocr_text": {
+          "type": ["string", "null"],
+          "description": "OCR-extracted text from vision gateway"
+        },
+        "objects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Detected scene objects/tags"
+        },
+        "ui_hint": {
+          "type": ["string", "null"],
+          "description": "Inferred active application context"
+        },
+        "transcript": {
+          "type": ["string", "null"],
+          "description": "User's voice transcript"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["retention", "allow_media_processing", "allow_tools"],
+      "properties": {
+        "retention": {
+          "type": "string",
+          "enum": ["none", "session_only"],
+          "description": "Data retention policy. 'none' = no server-side storage."
+        },
+        "allow_media_processing": {
+          "type": "boolean",
+          "description": "False in CUI_STREAM_ONLY mode"
+        },
+        "allow_tools": {
+          "type": "boolean",
+          "description": "False in CUI_STREAM_ONLY mode (no external writes)"
+        }
+      }
+    }
+  }
+}

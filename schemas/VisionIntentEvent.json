@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "VisionIntentEvent",
+  "title": "VisionIntentEvent",
+  "description": "Android → CVP Gateway: vision capture with intent and mode policy.",
+  "type": "object",
+  "required": ["session_id", "timestamp", "mode", "intent"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier (UUID)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of capture"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["PRIVATE", "EXEC", "BUILDER", "CUI_STREAM_ONLY"],
+      "description": "Capture policy mode. CUI_STREAM_ONLY rejects frame_b64."
+    },
+    "intent": {
+      "type": "string",
+      "enum": ["summarize", "extract_actions", "draft_reply", "gap_check", "agent_spec"],
+      "description": "What the user wants to do with the captured context"
+    },
+    "vision": {
+      "type": "object",
+      "description": "Optional visual context (frame rejected in CUI_STREAM_ONLY mode)",
+      "properties": {
+        "frame_b64": {
+          "type": "string",
+          "description": "Base64-encoded JPEG frame (max 2 MB). NOT accepted in CUI_STREAM_ONLY mode."
+        },
+        "ocr_text": {
+          "type": "string",
+          "description": "Pre-extracted OCR text (if available from on-device processing)"
+        },
+        "ui_hint": {
+          "type": "string",
+          "description": "Inferred active application context (e.g. 'Outlook', 'Teams')"
+        }
+      }
+    },
+    "speech": {
+      "type": "object",
+      "description": "Optional speech context",
+      "properties": {
+        "transcript": {
+          "type": "string",
+          "description": "Transcribed user speech"
+        }
+      }
+    }
+  }
+}

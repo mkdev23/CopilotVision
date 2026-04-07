@@ -1,6 +1,6 @@
-# VisionClaw / CVP
+/ CVP
 
-![VisionClaw](assets/teaserimage.png)
+
 
 A real-time AI assistant for Meta Ray-Ban smart glasses. See what you see, hear what you say, take actions in Microsoft 365 — all through voice.
 
@@ -8,7 +8,7 @@ A real-time AI assistant for Meta Ray-Ban smart glasses. See what you see, hear 
 
 **Android (CVP):** Built on [Meta Wearables DAT SDK](https://github.com/facebook/meta-wearables-dat-android) + Azure OpenAI Realtime + Azure AI Foundry Agents + MCP tool server. All tool execution routes through Microsoft-governed MCP infrastructure — no OpenClaw, no local gateway.
 
-**iOS (original):** Built on [Meta Wearables DAT SDK](https://github.com/facebook/meta-wearables-dat-ios) + [Gemini Live API](https://ai.google.dev/gemini-api/docs/live) + OpenClaw (optional).
+
 
 **Supported platforms:** Android (Pixel, Samsung, etc.) and iOS (iPhone)
 

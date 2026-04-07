@@ -6,7 +6,7 @@ A real-time AI assistant for Meta Ray-Ban smart glasses. See what you see, hear 
 
 ![Cover](assets/cover.png)
 
-**Android (CVP):** Built on [Meta Wearables DAT SDK](https://github.com/facebook/meta-wearables-dat-android) + Azure OpenAI Realtime + Azure AI Foundry Agents + MCP tool server. All tool execution routes through Microsoft-governed MCP infrastructure — no OpenClaw, no local gateway.
+**Android (CVP):** Built on [Meta Wearables DAT SDK]+ Azure OpenAI Realtime + Azure AI Foundry Agents + MCP tool server. All tool execution routes through Microsoft-governed MCP infrastructure — no OpenClaw, no local gateway.
 
 
 

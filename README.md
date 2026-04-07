@@ -4,7 +4,7 @@
 
 A real-time AI assistant for Meta Ray-Ban smart glasses. See what you see, hear what you say, take actions in Microsoft 365 — all through voice.
 
-![Cover](assets/cover.png)
+
 
 **Android (CVP):** Built on [Meta Wearables DAT SDK]+ Azure OpenAI Realtime + Azure AI Foundry Agents + MCP tool server. All tool execution routes through Microsoft-governed MCP infrastructure — no OpenClaw, no local gateway.
 
